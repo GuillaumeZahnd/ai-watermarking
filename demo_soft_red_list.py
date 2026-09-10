@@ -5,11 +5,13 @@ from transformers import (
     LogitsProcessorList,
 )
 
-from watermark import (
+from soft_red_list import (
     SecretGenerator,
     SoftRedListLogitsProcessor,
     SoftRedListDetector,
 )
+
+from utils import print_results
 
 
 if __name__ == "__main__":
@@ -27,7 +29,7 @@ if __name__ == "__main__":
     EXPONENT = 32
     GAMMA = 0.5  # Proportion of green tokens in the vocabulary
     DELTA = 2.5  # Boost the scores of the green tokens
-    Z_THRESHOLD = 4
+    NB_TOKENS_MIN = 20
     IS_PROMPT_AVAILABLE = False
 
     tokenizer = AutoTokenizer.from_pretrained(model_id)
@@ -57,7 +59,6 @@ if __name__ == "__main__":
         secret_generator=secret_generator,
         tokenizer=tokenizer,
         gamma=GAMMA,
-        z_threshold=Z_THRESHOLD,
     )
 
     # Input prompt
@@ -78,7 +79,13 @@ if __name__ == "__main__":
     else:
         unmarked_text = tokenizer.decode(output_ids_unmarked[0][input_length:], skip_special_tokens=True)
         analysis_unmarked = watermark_detector.detect(text=unmarked_text, prompt=None)
-    print(f"\n[Unmarked output]\n{unmarked_text}\n\n{analysis_unmarked}")
+    print(f"\n[Unmarked output]\n{unmarked_text}\n")
+    print_results(
+        nb_green_tokens=analysis_unmarked.nb_green_tokens,
+        nb_tokens=analysis_unmarked.nb_tokens,
+        z_score=analysis_unmarked.z_score,
+        nb_tokens_min=NB_TOKENS_MIN,
+    )
 
     # Watermarked output
     output_ids_watermarked = model.generate(
@@ -94,4 +101,10 @@ if __name__ == "__main__":
     else:
         watermarked_text = tokenizer.decode(output_ids_watermarked[0][input_length:], skip_special_tokens=True)
         analysis_watermarked = watermark_detector.detect(text=watermarked_text, prompt=None)
-    print(f"\nWatermarked output]\n{watermarked_text}\n\n{analysis_watermarked}")
+    print(f"\nWatermarked output]\n{watermarked_text}\n")
+    print_results(
+        nb_green_tokens=analysis_watermarked.nb_green_tokens,
+        nb_tokens=analysis_watermarked.nb_tokens,
+        z_score=analysis_watermarked.z_score,
+        nb_tokens_min=NB_TOKENS_MIN,
+    )
