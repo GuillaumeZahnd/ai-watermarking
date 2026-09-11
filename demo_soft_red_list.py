@@ -12,6 +12,7 @@ from soft_red_list import (
     )
 
 from utils import print_results
+from paraphrase_attack import paraphrase_attack
 
 
 if __name__ == "__main__":
@@ -30,7 +31,7 @@ if __name__ == "__main__":
     GAMMA = 0.5  # Proportion of green tokens in the vocabulary
     DELTA = 2.5  # Boost the scores of the green tokens
     NB_TOKENS_MIN = 20
-    IS_PROMPT_AVAILABLE = False
+    IS_PROMPT_AVAILABLE = True
 
     tokenizer = AutoTokenizer.from_pretrained(model_id)
 
@@ -101,10 +102,46 @@ if __name__ == "__main__":
     else:
         watermarked_text = tokenizer.decode(output_ids_watermarked[0][input_length:], skip_special_tokens=True)
         analysis_watermarked = watermark_detector.detect(text=watermarked_text, prompt=None)
-    print(f"\nWatermarked output]\n{watermarked_text}\n")
+    print(f"\n[Watermarked output]\n{watermarked_text}\n")
     print_results(
         nb_green_tokens=analysis_watermarked.nb_green_tokens,
         nb_tokens=analysis_watermarked.nb_tokens,
         z_score=analysis_watermarked.z_score,
+        nb_tokens_min=NB_TOKENS_MIN,
+        )
+
+    # Free memory
+    del model
+    torch.cuda.empty_cache()
+
+    # Paraphrase attack
+    paraphrase_model_id = "Qwen/Qwen2.5-7B-Instruct"
+    paraphrase_tokenizer = AutoTokenizer.from_pretrained(paraphrase_model_id)
+    paraphrase_model = AutoModelForCausalLM.from_pretrained(
+        paraphrase_model_id,
+        dtype=torch.bfloat16,
+        device_map="auto",
+    )
+
+    if IS_PROMPT_AVAILABLE:
+        query=prompt
+    else:
+        query=None
+
+    paraphrased_text = paraphrase_attack(
+        model=paraphrase_model,
+        tokenizer=paraphrase_tokenizer,
+        text=watermarked_text,
+        query=query,
+        temperature=0.9,
+        max_new_tokens=MAX_NEW_TOKENS,
+        )
+
+    analysis_paraphrased = watermark_detector.detect(text=paraphrased_text, prompt=None)
+    print(f"\n[Paraphrased output]\n{paraphrased_text}\n")
+    print_results(
+        nb_green_tokens=analysis_paraphrased.nb_green_tokens,
+        nb_tokens=analysis_paraphrased.nb_tokens,
+        z_score=analysis_paraphrased.z_score,
         nb_tokens_min=NB_TOKENS_MIN,
         )

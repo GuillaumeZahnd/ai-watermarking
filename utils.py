@@ -16,7 +16,7 @@ def print_results(
     print(f"z-score: {z_score:.2f}")
 
     p_value, confidence = z_score_to_p_value(z_score=z_score)
-    print(f"p-value: {p_value:.4f} (confidence: {(confidence*100):.1f}%)")
+    print(f"p-value: {p_value:.6f} (confidence: {(confidence*100):.2f}%)")
 
 
 def z_score_to_p_value(z_score: float) -> tuple[float, float]:
