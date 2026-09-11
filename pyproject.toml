@@ -17,7 +17,7 @@ dependencies = [
 ]
 
 [project.scripts]
-ai-de-watermarking = "ai_de_watermarking:main"
+ai-watermarking = "ai_watermarking:main"
 
 [tool.uv.sources]
 torch = { index = "pytorch-cu124" }

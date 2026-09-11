@@ -1,5 +1,4 @@
 import scipy.stats as stats
-import math
 
 
 def print_results(
@@ -7,7 +6,7 @@ def print_results(
     nb_tokens: int,
     z_score: float,
     nb_tokens_min: int
-) -> None:
+    ) -> None:
 
     if nb_tokens < nb_tokens_min:
         print(f"Not enough tokens: expected at least {nb_tokens_min}, got {nb_tokens}")
@@ -17,7 +16,7 @@ def print_results(
     print(f"z-score: {z_score:.2f}")
 
     p_value, confidence = z_score_to_p_value(z_score=z_score)
-    print(f"p-value: {p_value:.6f} (confidence: {(confidence*100):.2f})")
+    print(f"p-value: {p_value:.4f} (confidence: {(confidence*100):.1f}%)")
 
 
 def z_score_to_p_value(z_score: float) -> tuple[float, float]:
@@ -27,6 +26,6 @@ def z_score_to_p_value(z_score: float) -> tuple[float, float]:
     and corresponding confidence.
     """
 
-    p_value = stats.norm.sf(z_score)
+    p_value = float(stats.norm.sf(z_score))
     confidence = 1.0 - p_value
     return p_value, confidence

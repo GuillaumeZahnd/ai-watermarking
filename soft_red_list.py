@@ -1,5 +1,5 @@
 import torch
-from transformers import LogitsProcessor, AutoTokenizer
+from transformers import LogitsProcessor, PreTrainedTokenizerBase
 from pydantic import BaseModel, Field
 
 
@@ -9,7 +9,7 @@ class SecretGenerator():
         hash_key: int,
         mantissa: int,
         exponent: int
-    ) -> None:
+        ) -> None:
         self.hash_key = hash_key
         self.mantissa = mantissa
         self.modulo = 2**exponent
@@ -26,7 +26,7 @@ class SecretGenerator():
         vocab_size: int,
         green_list_size: int,
         device: torch.device | str = "cpu",
-    ) -> torch.Tensor:
+        ) -> torch.Tensor:
         generator = self._get_generator(previous_token_id, device=self.generator_device)
         green_list = torch.randperm(vocab_size, generator=generator, device=self.generator_device)[:green_list_size]
         return green_list.to(device)
@@ -41,7 +41,7 @@ class SoftRedListLogitsProcessor(LogitsProcessor):
         vocab_size: int,
         gamma: float,
         delta: float,
-    ) -> None:
+        ) -> None:
         self.secret_generator = secret_generator
         self.vocab_size = vocab_size
         self.gamma = gamma
@@ -50,13 +50,13 @@ class SoftRedListLogitsProcessor(LogitsProcessor):
 
     def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor) -> torch.FloatTensor:
         for batch_index in range(input_ids.shape[0]):
-            previous_token_id = input_ids[batch_index, -1].item()
+            previous_token_id = int(input_ids[batch_index, -1].item())
             green_indices = self.secret_generator.get_green_list(
                 previous_token_id=previous_token_id,
                 vocab_size=self.vocab_size,
                 green_list_size=self.green_list_size,
                 device=scores.device,
-            )
+                )
 
             # Apply bias delta to green tokens
             scores[batch_index, green_indices] += self.delta
@@ -80,16 +80,16 @@ class SoftRedListDetector:
     def __init__(
         self,
         secret_generator: SecretGenerator,
-        tokenizer: AutoTokenizer,
+        tokenizer: PreTrainedTokenizerBase,
         gamma: float,
-    ) -> None:
+        ) -> None:
         self.secret_generator = secret_generator
         self.tokenizer = tokenizer
         self.vocab_size = len(tokenizer)
         self.gamma = gamma
         self.green_list_size = int(self.vocab_size * self.gamma)
 
-    def detect(self, text: str, prompt: str | None = None) -> dict:
+    def detect(self, text: str, prompt: str | None = None) -> DetectionResult:
 
         if prompt:
             # Keep only generated tokens, but include the last prompt token at the front for context
@@ -117,7 +117,7 @@ class SoftRedListDetector:
                 vocab_size=self.vocab_size,
                 green_list_size=self.green_list_size,
                 device="cpu",
-            )
+                )
 
             if current_token in set(green_indices.tolist()):
                 nb_green_tokens += 1
@@ -131,4 +131,4 @@ class SoftRedListDetector:
             nb_green_tokens=nb_green_tokens,
             nb_tokens=nb_tokens,
             z_score=z_score,
-        )
+            )
